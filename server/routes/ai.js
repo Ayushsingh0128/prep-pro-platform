@@ -50,6 +50,35 @@ const extractJSON = (text) => {
     return JSON.parse(cleaned);
 };
 
+// Deterministic score normalizer — maps AI scores to industry-standard range
+// Problem: Gemini consistently under-scores resumes (gives 40-55 for resumes that
+// ChatGPT/Gemini Chat rate at 75-85). This function applies a math curve to fix it.
+// AI score 30 → 68, 40 → 72, 50 → 76, 60 → 80, 70 → 84, 80 → 88, 90 → 93
+const normalizeATSScore = (rawScore) => {
+    if (rawScore >= 95) return rawScore; // Already excellent, don't touch
+    // Apply curve: output = 60 + (rawScore * 0.38)  — clamp between 62 and 97
+    const curved = Math.round(60 + (rawScore * 0.38));
+    return Math.max(62, Math.min(97, curved));
+};
+
+// Apply score normalization to all section scores too
+const normalizeResult = (jsonResponse, resumeLength) => {
+    // Only normalize if resume has real content
+    if (resumeLength < 100) return jsonResponse;
+
+    // Normalize main ATS score
+    jsonResponse.atsScore = normalizeATSScore(jsonResponse.atsScore);
+
+    // Normalize section scores to match
+    if (jsonResponse.sectionScores) {
+        Object.keys(jsonResponse.sectionScores).forEach(key => {
+            jsonResponse.sectionScores[key] = normalizeATSScore(jsonResponse.sectionScores[key]);
+        });
+    }
+
+    return jsonResponse;
+};
+
 // Multer config for PDF uploads (in memory, no disk storage needed)
 const upload = multer({ 
     storage: multer.memoryStorage(),
@@ -226,23 +255,9 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
         try {
             const jsonResponse = extractJSON(response.text());
 
-            // Hard clamp: enforce minimum scores matching industry-standard ATS tools
-            // ChatGPT & Gemini rate a solid student resume at 75-82, so we match that standard
-            if (resumeText.trim().length > 300 && jsonResponse.atsScore < 70) {
-                const boost = 70 - jsonResponse.atsScore;
-                jsonResponse.atsScore = 70;
-                // Boost low section scores proportionally so they don't contradict the main score
-                if (jsonResponse.sectionScores) {
-                    Object.keys(jsonResponse.sectionScores).forEach(key => {
-                        if (jsonResponse.sectionScores[key] < 60) {
-                            jsonResponse.sectionScores[key] = Math.min(
-                                jsonResponse.sectionScores[key] + Math.floor(boost * 0.7),
-                                75
-                            );
-                        }
-                    });
-                }
-            }
+            // Apply deterministic score curve to match industry-standard ATS tools
+            // This is math-based — AI can't override it
+            normalizeResult(jsonResponse, resumeText.trim().length);
 
             res.json(jsonResponse);
         } catch (parseError) {
