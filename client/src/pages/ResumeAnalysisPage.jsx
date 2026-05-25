@@ -93,17 +93,19 @@ const ResumeAnalysisPage = () => {
     };
 
     const getScoreColor = (score) => {
-        if (score >= 91) return '#10b981';
-        if (score >= 71) return '#34d399';
-        if (score >= 41) return '#fbbf24';
-        return '#ef4444';
+        if (score >= 85) return '#10b981'; // green - excellent
+        if (score >= 75) return '#34d399'; // light green - strong
+        if (score >= 65) return '#fbbf24'; // yellow - good
+        if (score >= 55) return '#f97316'; // orange - developing
+        return '#ef4444';                  // red - needs work
     };
 
     const getScoreLabel = (score) => {
-        if (score >= 91) return 'Excellent';
-        if (score >= 71) return 'Good';
-        if (score >= 41) return 'Needs Improvement';
-        return 'Needs Major Work';
+        if (score >= 85) return 'Excellent 🎉';
+        if (score >= 75) return 'Strong 💪';
+        if (score >= 65) return 'Good 👍';
+        if (score >= 55) return 'Developing 📈';
+        return 'Keep Building 🚀';
     };
 
     return (

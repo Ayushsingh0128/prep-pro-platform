@@ -177,22 +177,38 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
         // 2. Build the detailed analysis prompt
         const companyContext = targetCompany ? ` at ${targetCompany}` : '';
         const prompt = `
-            You are an expert ATS (Applicant Tracking System) scanner and encouraging career counselor.
-            Your goal is to help candidates improve, not discourage them.
-            
+            You are a supportive career counselor and ATS scanner helping students and freshers improve their resumes.
+            Your scoring must be FAIR and ENCOURAGING — not harsh.
+
             Analyze this resume for a "${targetRole}"${companyContext} role:
-            
+
             ---BEGIN RESUME---
             ${resumeText}
             ---END RESUME---
-            
+
+            STUDENT-FRIENDLY SCORING RULES (MANDATORY — follow exactly):
+            - A student/fresher resume with 2+ projects + skills section + education = MINIMUM score of 65
+            - A student with 3+ projects + internship + certifications = score between 68-75
+            - Only give below 60 if the resume is nearly empty (no projects, no skills, no experience at all)
+            - Projects are JUST AS VALUABLE as work experience for freshers — do NOT penalize students for lacking full-time jobs
+            - Internships (even virtual/short-term) count as real experience — score experience section 60+ if any internship exists
+            - Certifications add significant value — reward them
+            - A well-formatted resume with good sections deserves 70+
+
+            SCORE REFERENCE:
+            - 60-65: Basic student resume with some projects and skills
+            - 65-72: Good student resume with 2-3 projects, skills, education, maybe an internship
+            - 72-80: Strong resume with multiple projects, internship, certifications, quantified results
+            - 80-90: Excellent resume — highly tailored, metrics, strong tech stack match
+            - 90-100: Near-perfect — exceptional candidates
+
             Respond ONLY with a valid JSON object (no markdown, no backticks, no explanation) in this EXACT format:
             {
-              "atsScore": (number 0-100, use the BALANCED scoring guide below),
+              "atsScore": (number — follow scoring rules strictly, minimum 62 for any real resume with projects),
               "sectionScores": {
                 "contactInfo": (number 0-100),
                 "summary": (number 0-100),
-                "experience": (number 0-100),
+                "experience": (number 0-100, give 60+ if any internship or projects exist),
                 "skills": (number 0-100),
                 "education": (number 0-100),
                 "formatting": (number 0-100)
@@ -200,35 +216,35 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
               "foundKeywords": ["list of relevant keywords found in resume, max 10"],
               "missingKeywords": ["list of important missing keywords for this role, max 8"],
               "recommendations": [
-                "5 specific, actionable recommendations to improve the resume"
+                "5 specific growth-focused recommendations — frame them as next steps, not failures"
               ],
               "strengths": [
-                "3 things the resume does well"
+                "3 genuine strengths of this resume — be specific and positive"
               ],
-              "verdict": "A 2-sentence encouraging verdict that acknowledges the candidate's strengths and outlines 1-2 key areas to grow"
+              "verdict": "A motivating 2-sentence verdict like a mentor — highlight what they are doing right and 1 thing to level up"
             }
-
-            BALANCED SCORING GUIDE (follow strictly):
-            - 45-55: Beginner resume — has basic info, a couple of projects or skills, but needs more depth
-            - 55-65: Developing resume — student or fresher with decent projects, skills, and some experience
-            - 65-75: Good resume — solid projects, relevant skills, internship/experience, clear formatting
-            - 75-85: Strong resume — well-tailored, quantified achievements, great keyword match
-            - 85-100: Exceptional — industry-ready, highly tailored, strong metrics and relevant experience
-            
-            IMPORTANT RULES:
-            - NEVER give a score below 45 if the resume has real content (projects, skills, education)
-            - NEVER give a score below 40 for any resume that has been thoughtfully written
-            - Be encouraging — a student or fresher with projects deserves at least 55+
-            - Focus recommendations on GROWTH, not failures
-            - Keywords should be specific to the "${targetRole}" role
-            - Strengths should genuinely highlight what the candidate is doing well
-            - The verdict tone must be positive and motivating, like a mentor speaking to a mentee
         `;
 
         const response = await callGeminiWithRetry(prompt);
         
         try {
             const jsonResponse = extractJSON(response.text());
+
+            // Hard clamp: if resume has real content (more than 200 chars) and score is too low, boost it
+            // This prevents demotivating newcomers with unfairly low scores
+            if (resumeText.trim().length > 200 && jsonResponse.atsScore < 62) {
+                const boost = 62 - jsonResponse.atsScore;
+                jsonResponse.atsScore = 62;
+                // Also boost sectionScores proportionally so they don't look contradictory
+                if (jsonResponse.sectionScores) {
+                    Object.keys(jsonResponse.sectionScores).forEach(key => {
+                        if (jsonResponse.sectionScores[key] < 55) {
+                            jsonResponse.sectionScores[key] = Math.min(jsonResponse.sectionScores[key] + boost, 70);
+                        }
+                    });
+                }
+            }
+
             res.json(jsonResponse);
         } catch (parseError) {
             console.error("Resume Analysis JSON Parsing Error:", response.text());
