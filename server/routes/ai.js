@@ -177,8 +177,9 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
         // 2. Build the detailed analysis prompt
         const companyContext = targetCompany ? ` at ${targetCompany}` : '';
         const prompt = `
-            You are a supportive career counselor and ATS scanner helping students and freshers improve their resumes.
-            Your scoring must be FAIR and ENCOURAGING — not harsh.
+            You are an ATS (Applicant Tracking System) scanner. Your scores must match industry-standard ATS tools.
+            For reference: ChatGPT and Gemini both rate a solid student resume with MERN projects + internship + certifications at 80-85/100.
+            Your scores should be in the same range.
 
             Analyze this resume for a "${targetRole}"${companyContext} role:
 
@@ -186,42 +187,37 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
             ${resumeText}
             ---END RESUME---
 
-            STUDENT-FRIENDLY SCORING RULES (MANDATORY — follow exactly):
-            - A student/fresher resume with 2+ projects + skills section + education = MINIMUM score of 65
-            - A student with 3+ projects + internship + certifications = score between 68-75
-            - Only give below 60 if the resume is nearly empty (no projects, no skills, no experience at all)
-            - Projects are JUST AS VALUABLE as work experience for freshers — do NOT penalize students for lacking full-time jobs
-            - Internships (even virtual/short-term) count as real experience — score experience section 60+ if any internship exists
-            - Certifications add significant value — reward them
-            - A well-formatted resume with good sections deserves 70+
+            SCORING STANDARD (match this exactly):
+            - Resume has contact info + summary + skills + 2+ projects + education = score 70-75
+            - Resume has all above PLUS internship/work experience = score 75-80
+            - Resume has all above PLUS certifications + good formatting = score 78-84
+            - Resume has quantified achievements + perfectly tailored keywords = score 84-92
+            - Only give below 65 if resume is genuinely sparse (less than 100 words, no projects, no skills)
 
-            SCORE REFERENCE:
-            - 60-65: Basic student resume with some projects and skills
-            - 65-72: Good student resume with 2-3 projects, skills, education, maybe an internship
-            - 72-80: Strong resume with multiple projects, internship, certifications, quantified results
-            - 80-90: Excellent resume — highly tailored, metrics, strong tech stack match
-            - 90-100: Near-perfect — exceptional candidates
+            KEY RULES:
+            - DO NOT penalize students for not having full-time jobs. Projects + internships = equivalent experience.
+            - A virtual or short-term internship still counts as real experience. Score experience 65+ if any exists.
+            - Having 3+ complete projects with tech stacks and live links = very strong signal. Reward it.
+            - Well-structured sections (Professional Summary, Skills, Projects, Education) = good formatting score 75+
+            - Certifications from recognized platforms (IBM, Salesforce, Google, etc.) = add 3-5 points
+            - Student GPA above 7.0/10 = positive signal for education score
 
-            Respond ONLY with a valid JSON object (no markdown, no backticks, no explanation) in this EXACT format:
+            Respond ONLY with a valid JSON object (no markdown, no backticks, no explanation):
             {
-              "atsScore": (number — follow scoring rules strictly, minimum 62 for any real resume with projects),
+              "atsScore": (number 0-100, follow scoring standard above),
               "sectionScores": {
-                "contactInfo": (number 0-100),
-                "summary": (number 0-100),
-                "experience": (number 0-100, give 60+ if any internship or projects exist),
-                "skills": (number 0-100),
-                "education": (number 0-100),
-                "formatting": (number 0-100)
+                "contactInfo": (0-100),
+                "summary": (0-100),
+                "experience": (0-100, minimum 65 if any internship or projects exist),
+                "skills": (0-100),
+                "education": (0-100),
+                "formatting": (0-100)
               },
-              "foundKeywords": ["list of relevant keywords found in resume, max 10"],
-              "missingKeywords": ["list of important missing keywords for this role, max 8"],
-              "recommendations": [
-                "5 specific growth-focused recommendations — frame them as next steps, not failures"
-              ],
-              "strengths": [
-                "3 genuine strengths of this resume — be specific and positive"
-              ],
-              "verdict": "A motivating 2-sentence verdict like a mentor — highlight what they are doing right and 1 thing to level up"
+              "foundKeywords": ["up to 10 relevant keywords found"],
+              "missingKeywords": ["up to 8 important missing keywords for ${targetRole}"],
+              "recommendations": ["5 specific next-step recommendations framed as improvements, not criticism"],
+              "strengths": ["3 specific genuine strengths of this resume"],
+              "verdict": "2 sentences: first highlight their strongest asset, then mention 1 area to level up"
             }
         `;
 
@@ -230,16 +226,19 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
         try {
             const jsonResponse = extractJSON(response.text());
 
-            // Hard clamp: if resume has real content (more than 200 chars) and score is too low, boost it
-            // This prevents demotivating newcomers with unfairly low scores
-            if (resumeText.trim().length > 200 && jsonResponse.atsScore < 62) {
-                const boost = 62 - jsonResponse.atsScore;
-                jsonResponse.atsScore = 62;
-                // Also boost sectionScores proportionally so they don't look contradictory
+            // Hard clamp: enforce minimum scores matching industry-standard ATS tools
+            // ChatGPT & Gemini rate a solid student resume at 75-82, so we match that standard
+            if (resumeText.trim().length > 300 && jsonResponse.atsScore < 70) {
+                const boost = 70 - jsonResponse.atsScore;
+                jsonResponse.atsScore = 70;
+                // Boost low section scores proportionally so they don't contradict the main score
                 if (jsonResponse.sectionScores) {
                     Object.keys(jsonResponse.sectionScores).forEach(key => {
-                        if (jsonResponse.sectionScores[key] < 55) {
-                            jsonResponse.sectionScores[key] = Math.min(jsonResponse.sectionScores[key] + boost, 70);
+                        if (jsonResponse.sectionScores[key] < 60) {
+                            jsonResponse.sectionScores[key] = Math.min(
+                                jsonResponse.sectionScores[key] + Math.floor(boost * 0.7),
+                                75
+                            );
                         }
                     });
                 }
