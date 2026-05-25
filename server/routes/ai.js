@@ -111,19 +111,25 @@ router.post('/ats-scan', auth, async (req, res) => {
         const targetRole = resumeData.role || 'Software Developer';
 
         const prompt = `
-            Act as an expert Technical Recruiter and ATS (Applicant Tracking System) software.
+            Act as an encouraging Technical Recruiter and ATS (Applicant Tracking System) expert.
             Analyze this resume data for a "${targetRole}" role:
             ${JSON.stringify(resumeData)}
 
-            Be realistic with scoring. A fresh graduate with few skills should score 30-55.
-            A mid-level resume with good content should score 55-75. Only exceptional resumes score 80+.
+            BALANCED SCORING GUIDE:
+            - 45-55: Beginner — basic info, a few projects/skills, needs more depth
+            - 55-65: Developing — student/fresher with decent projects and relevant skills
+            - 65-75: Good — solid projects, internship/experience, clear skills section
+            - 75-85: Strong — tailored resume, quantified achievements, great keyword match
+            - 85-100: Exceptional — industry-ready, highly relevant, strong metrics
+
+            IMPORTANT: NEVER give below 45 if the resume has real content. Be encouraging and growth-focused.
 
             Respond ONLY with a valid JSON object (no markdown, no backticks, no extra text) in this EXACT format:
             {
-              "atsScore": (integer between 0-100),
-              "feedback": ["specific feedback point 1", "specific feedback point 2", "specific feedback point 3"],
+              "atsScore": (integer between 45-100 for any resume with real content),
+              "feedback": ["encouraging feedback point 1", "growth tip 2", "actionable suggestion 3"],
               "missingKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-              "compatibility": "A 1-sentence verdict on how suitable this candidate is for a ${targetRole} role."
+              "compatibility": "A 1-sentence encouraging verdict on the candidate's potential for the ${targetRole} role."
             }
         `;
 
@@ -171,7 +177,8 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
         // 2. Build the detailed analysis prompt
         const companyContext = targetCompany ? ` at ${targetCompany}` : '';
         const prompt = `
-            You are an expert ATS (Applicant Tracking System) scanner and professional career counselor.
+            You are an expert ATS (Applicant Tracking System) scanner and encouraging career counselor.
+            Your goal is to help candidates improve, not discourage them.
             
             Analyze this resume for a "${targetRole}"${companyContext} role:
             
@@ -181,7 +188,7 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
             
             Respond ONLY with a valid JSON object (no markdown, no backticks, no explanation) in this EXACT format:
             {
-              "atsScore": (number 0-100, be realistic and strict),
+              "atsScore": (number 0-100, use the BALANCED scoring guide below),
               "sectionScores": {
                 "contactInfo": (number 0-100),
                 "summary": (number 0-100),
@@ -198,14 +205,24 @@ router.post('/analyze-resume', auth, upload.single('resumeFile'), async (req, re
               "strengths": [
                 "3 things the resume does well"
               ],
-              "verdict": "A 2-sentence professional verdict on the candidate's fit for the target role"
+              "verdict": "A 2-sentence encouraging verdict that acknowledges the candidate's strengths and outlines 1-2 key areas to grow"
             }
 
-            Rules:
-            - Be brutally honest with scores. Average resumes should score 40-65, not 80+.
-            - Keywords should be specific to the "${targetRole}" role.
-            - Recommendations should be concrete and actionable, not generic.
-            - Strengths should highlight what the candidate already does well.
+            BALANCED SCORING GUIDE (follow strictly):
+            - 45-55: Beginner resume — has basic info, a couple of projects or skills, but needs more depth
+            - 55-65: Developing resume — student or fresher with decent projects, skills, and some experience
+            - 65-75: Good resume — solid projects, relevant skills, internship/experience, clear formatting
+            - 75-85: Strong resume — well-tailored, quantified achievements, great keyword match
+            - 85-100: Exceptional — industry-ready, highly tailored, strong metrics and relevant experience
+            
+            IMPORTANT RULES:
+            - NEVER give a score below 45 if the resume has real content (projects, skills, education)
+            - NEVER give a score below 40 for any resume that has been thoughtfully written
+            - Be encouraging — a student or fresher with projects deserves at least 55+
+            - Focus recommendations on GROWTH, not failures
+            - Keywords should be specific to the "${targetRole}" role
+            - Strengths should genuinely highlight what the candidate is doing well
+            - The verdict tone must be positive and motivating, like a mentor speaking to a mentee
         `;
 
         const response = await callGeminiWithRetry(prompt);
