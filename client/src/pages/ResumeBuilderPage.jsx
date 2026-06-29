@@ -224,6 +224,37 @@ const ResumeBuilderPage = () => {
                         </div>
                     </SectionAccordion>
 
+                    {/* Education */}
+                    <SectionAccordion openSections={openSections} toggleSection={toggleSection} id="education" icon={GraduationCap} title="Education" color="#06b6d4">
+                        {data.education.map((edu, i) => (
+                            <div key={i} style={itemCard}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>EDUCATION {i + 1}</span>
+                                    <Trash2 size={13} color="#ef4444" cursor="pointer" onClick={() => removeItem('education', i)} />
+                                </div>
+                                <div style={gridTwo}>
+                                    <StyledInput placeholder="Degree (B.Tech CS)" value={edu.degree} onChange={v => handleListChange('education', i, 'degree', v)} />
+                                    <StyledInput placeholder="Institute" value={edu.institute} onChange={v => handleListChange('education', i, 'institute', v)} />
+                                </div>
+                                <div style={gridTwo}>
+                                    <StyledInput placeholder="Year (2022-2026)" value={edu.year} onChange={v => handleListChange('education', i, 'year', v)} />
+                                    <StyledInput placeholder="GPA (optional)" value={edu.gpa} onChange={v => handleListChange('education', i, 'gpa', v)} />
+                                </div>
+                            </div>
+                        ))}
+                        <button style={addItemBtn} onClick={() => addItem('education', { degree: '', institute: '', year: '', gpa: '' })}>
+                            <Plus size={14} /> Add Education
+                        </button>
+                    </SectionAccordion>
+
+                    {/* Skills */}
+                    <SectionAccordion openSections={openSections} toggleSection={toggleSection} id="skills" icon={Code2} title="Technical Skills" color="#8b5cf6">
+                        <StyledInput placeholder="Frontend (React, HTML, CSS, JS...)" value={data.skills.frontend} onChange={v => handleSkillChange('frontend', v)} />
+                        <StyledInput placeholder="Backend (Node, Express, Python...)" value={data.skills.backend} onChange={v => handleSkillChange('backend', v)} />
+                        <StyledInput placeholder="Tools (Git, Docker, VS Code...)" value={data.skills.tools} onChange={v => handleSkillChange('tools', v)} />
+                        <StyledInput placeholder="Core Concepts (DSA, OS, DBMS...)" value={data.skills.soft} onChange={v => handleSkillChange('soft', v)} />
+                    </SectionAccordion>
+
                     {/* Experience */}
                     <SectionAccordion openSections={openSections} toggleSection={toggleSection} id="experience" icon={Briefcase} title="Work Experience" color="#f59e0b">
                         {data.experience.map((exp, i) => (
@@ -299,37 +330,6 @@ const ResumeBuilderPage = () => {
                         </button>
                     </SectionAccordion>
 
-                    {/* Education */}
-                    <SectionAccordion openSections={openSections} toggleSection={toggleSection} id="education" icon={GraduationCap} title="Education" color="#06b6d4">
-                        {data.education.map((edu, i) => (
-                            <div key={i} style={itemCard}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>EDUCATION {i + 1}</span>
-                                    <Trash2 size={13} color="#ef4444" cursor="pointer" onClick={() => removeItem('education', i)} />
-                                </div>
-                                <div style={gridTwo}>
-                                    <StyledInput placeholder="Degree (B.Tech CS)" value={edu.degree} onChange={v => handleListChange('education', i, 'degree', v)} />
-                                    <StyledInput placeholder="Institute" value={edu.institute} onChange={v => handleListChange('education', i, 'institute', v)} />
-                                </div>
-                                <div style={gridTwo}>
-                                    <StyledInput placeholder="Year (2022-2026)" value={edu.year} onChange={v => handleListChange('education', i, 'year', v)} />
-                                    <StyledInput placeholder="GPA (optional)" value={edu.gpa} onChange={v => handleListChange('education', i, 'gpa', v)} />
-                                </div>
-                            </div>
-                        ))}
-                        <button style={addItemBtn} onClick={() => addItem('education', { degree: '', institute: '', year: '', gpa: '' })}>
-                            <Plus size={14} /> Add Education
-                        </button>
-                    </SectionAccordion>
-
-                    {/* Skills */}
-                    <SectionAccordion openSections={openSections} toggleSection={toggleSection} id="skills" icon={Code2} title="Technical Skills" color="#8b5cf6">
-                        <StyledInput placeholder="Frontend (React, HTML, CSS, JS...)" value={data.skills.frontend} onChange={v => handleSkillChange('frontend', v)} />
-                        <StyledInput placeholder="Backend (Node, Express, Python...)" value={data.skills.backend} onChange={v => handleSkillChange('backend', v)} />
-                        <StyledInput placeholder="Tools (Git, Docker, VS Code...)" value={data.skills.tools} onChange={v => handleSkillChange('tools', v)} />
-                        <StyledInput placeholder="Core Concepts (DSA, OS, DBMS...)" value={data.skills.soft} onChange={v => handleSkillChange('soft', v)} />
-                    </SectionAccordion>
-
                     {/* Certifications */}
                     <SectionAccordion openSections={openSections} toggleSection={toggleSection} id="certifications" icon={Award} title="Certifications" color="#f97316">
                         {data.certifications.map((cert, i) => (
@@ -376,6 +376,21 @@ const ResumeBuilderPage = () => {
                         {data.summary && (
                             <PreviewSection title="PROFESSIONAL SUMMARY">
                                 <p style={pText}>{data.summary}</p>
+                            </PreviewSection>
+                        )}
+
+                        {/* EDUCATION */}
+                        {data.education.some(e => e.degree || e.institute) && (
+                            <PreviewSection title="EDUCATION">
+                                {data.education.filter(e => e.degree || e.institute).map((edu, i) => (
+                                    <div key={i} style={{ ...pFlexBetween, marginBottom: '4px' }}>
+                                        <div>
+                                            <b style={{ fontSize: '13px', color: '#0f172a' }}>{edu.institute}</b>
+                                            <div style={{ fontSize: '12px', color: '#475569' }}>{edu.degree}{edu.gpa ? ` | GPA: ${edu.gpa}` : ''}</div>
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: '#64748b' }}>{edu.year}</span>
+                                    </div>
+                                ))}
                             </PreviewSection>
                         )}
 
@@ -434,21 +449,6 @@ const ResumeBuilderPage = () => {
                                                 <li key={li} style={pText}>{line.trim()}</li>
                                             ))}
                                         </ul>
-                                    </div>
-                                ))}
-                            </PreviewSection>
-                        )}
-
-                        {/* EDUCATION */}
-                        {data.education.some(e => e.degree || e.institute) && (
-                            <PreviewSection title="EDUCATION">
-                                {data.education.filter(e => e.degree || e.institute).map((edu, i) => (
-                                    <div key={i} style={{ ...pFlexBetween, marginBottom: '4px' }}>
-                                        <div>
-                                            <b style={{ fontSize: '13px', color: '#0f172a' }}>{edu.institute}</b>
-                                            <div style={{ fontSize: '12px', color: '#475569' }}>{edu.degree}{edu.gpa ? ` | GPA: ${edu.gpa}` : ''}</div>
-                                        </div>
-                                        <span style={{ fontSize: '11px', color: '#64748b' }}>{edu.year}</span>
                                     </div>
                                 ))}
                             </PreviewSection>
